@@ -1,0 +1,75 @@
+local tool = script.Parent
+local toolHandle = tool.Handle
+local player = game.Players.LocalPlayer
+local character = player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local HumanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local WeaponFireEventsFolder = ReplicatedStorage.WeaponFireEvents
+local WeaponAnimationEventsFolder = ReplicatedStorage.WeaponAnimationEvents
+local SpoonIdleAnimationEventsFolder = WeaponAnimationEventsFolder.SpoonIdleAnimationEvents
+
+local active = false
+local toolActive = false
+local toolEquipped = false 
+local idleAnimationPlaying = false
+local cooldown = 3
+
+
+local function onTouch(playerHitPart)
+	local playerHit = playerHitPart.Parent
+	local hitHumanoid = playerHit:FindFirstChild("Humanoid")
+	print(playerHitPart)
+	if hitHumanoid then
+		if not active then
+			active = true	
+			WeaponFireEventsFolder.SpoonFire:FireServer(hitHumanoid)
+			wait(cooldown)
+			active = false
+		end
+	end
+end
+
+function onToolActivated()
+	if not toolActive then
+		toolActive = true
+		WeaponAnimationEventsFolder.SpoonSlash:FireServer(humanoid)
+		local connectTouch = toolHandle.Touched:Connect(onTouch)
+		wait(cooldown)
+		connectTouch:Disconnect()
+		print("end")
+		toolActive = false
+	end
+	return
+end
+
+tool.Equipped:Connect(function()
+	toolEquipped = true
+	while toolEquipped and not idleAnimationPlaying do
+		humanoid.StateChanged:Connect(function(oldState, newState)
+			if HumanoidRootPart.Velocity.X == 0 and HumanoidRootPart.Velocity.Z == 0 then
+				SpoonIdleAnimationEventsFolder.IdleStart:FireServer(humanoid, true)
+				print("Fired Event")
+				idleAnimationPlaying = true
+				
+				
+
+			else if idleAnimationPlaying then
+					SpoonIdleAnimationEventsFolder.IdleStop:FireServer(humanoid, false)
+					idleAnimationPlaying = false
+				end
+			end
+		end)
+		wait()
+	end
+end)
+
+tool.Unequipped:Connect(function()
+	toolEquipped = false
+	if idleAnimationPlaying then
+		SpoonIdleAnimationEventsFolder.IdleStop:FireServer(humanoid, false)
+	end
+end)
+
+tool.Activated:Connect(onToolActivated)
+EndText
